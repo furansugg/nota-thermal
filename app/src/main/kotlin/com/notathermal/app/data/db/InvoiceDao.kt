@@ -42,4 +42,10 @@ interface InvoiceDao {
 
     @Query("DELETE FROM invoices WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query(
+        "UPDATE invoices SET paymentMethod = :method, paymentReceived = :received, change = :change " +
+            "WHERE id = :id"
+    )
+    suspend fun updatePayment(id: Long, method: String, received: Double, change: Double)
 }

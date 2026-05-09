@@ -20,6 +20,14 @@ class InvoiceRepository(private val dao: InvoiceDao) {
 
     suspend fun deleteInvoice(id: Long) = dao.deleteById(id)
 
+    suspend fun markAsPaid(id: Long, paymentMethod: String, paymentReceived: Double) {
+        val current = dao.getWithItems(id) ?: return
+        val total = current.invoice.total
+        val received = paymentReceived.coerceAtLeast(total)
+        val change = (received - total).coerceAtLeast(0.0)
+        dao.updatePayment(id, paymentMethod, received, change)
+    }
+
     suspend fun createInvoice(
         items: List<InvoiceItemEntity>,
         customerName: String?,
