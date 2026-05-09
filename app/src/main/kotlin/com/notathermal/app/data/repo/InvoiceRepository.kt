@@ -3,7 +3,9 @@ package com.notathermal.app.data.repo
 import com.notathermal.app.data.db.InvoiceDao
 import com.notathermal.app.data.db.InvoiceEntity
 import com.notathermal.app.data.db.InvoiceItemEntity
+import com.notathermal.app.data.db.InvoiceType
 import com.notathermal.app.data.db.InvoiceWithItems
+import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.util.Format
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
@@ -33,10 +35,13 @@ class InvoiceRepository(private val dao: InvoiceDao) {
         val taxBase = (subtotal - discount).coerceAtLeast(0.0)
         val taxAmount = taxBase * taxPercent / 100.0
         val total = (taxBase + taxAmount).coerceAtLeast(0.0)
-        val change = (paymentReceived - total).coerceAtLeast(0.0)
+        val isHutang = paymentMethod == PaymentMethod.HUTANG
+        val received = if (isHutang) 0.0 else paymentReceived
+        val change = if (isHutang) 0.0 else (received - total).coerceAtLeast(0.0)
         val code = nextCode(now)
         val invoice = InvoiceEntity(
             code = code,
+            invoiceType = InvoiceType.REGULAR,
             customerName = customerName?.takeIf { it.isNotBlank() },
             cashierName = cashierName?.takeIf { it.isNotBlank() },
             note = note?.takeIf { it.isNotBlank() },
@@ -46,11 +51,58 @@ class InvoiceRepository(private val dao: InvoiceDao) {
             taxAmount = taxAmount,
             total = total,
             paymentMethod = paymentMethod,
-            paymentReceived = paymentReceived,
+            paymentReceived = received,
             change = change,
             createdAt = now
         )
         return dao.insertInvoiceWithItems(invoice, items)
+    }
+
+    suspend fun createPlnTokenInvoice(
+        meterNo: String,
+        customerName: String?,
+        kwh: Double,
+        tokenNumber: String,
+        nominal: Double,
+        adminFee: Double,
+        paymentMethod: String,
+        paymentReceived: Double,
+        note: String?,
+        now: Long = System.currentTimeMillis()
+    ): Long {
+        val total = (nominal + adminFee).coerceAtLeast(0.0)
+        val isHutang = paymentMethod == PaymentMethod.HUTANG
+        val received = if (isHutang) 0.0 else paymentReceived
+        val change = if (isHutang) 0.0 else (received - total).coerceAtLeast(0.0)
+        val code = nextCode(now)
+        val invoice = InvoiceEntity(
+            code = code,
+            invoiceType = InvoiceType.PLN_TOKEN,
+            customerName = customerName?.takeIf { it.isNotBlank() },
+            cashierName = null,
+            note = note?.takeIf { it.isNotBlank() },
+            subtotal = nominal,
+            discount = 0.0,
+            taxPercent = 0.0,
+            taxAmount = adminFee,
+            total = total,
+            paymentMethod = paymentMethod,
+            paymentReceived = received,
+            change = change,
+            meterNo = meterNo,
+            kwh = kwh,
+            tokenNumber = tokenNumber,
+            createdAt = now
+        )
+        val item = InvoiceItemEntity(
+            invoiceId = 0,
+            name = "Token Listrik PLN",
+            quantity = 1.0,
+            price = nominal,
+            discount = 0.0,
+            subtotal = nominal
+        )
+        return dao.insertInvoiceWithItems(invoice, listOf(item))
     }
 
     private suspend fun nextCode(now: Long): String {

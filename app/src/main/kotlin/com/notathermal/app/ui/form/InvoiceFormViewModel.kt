@@ -3,6 +3,7 @@ package com.notathermal.app.ui.form
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notathermal.app.data.db.InvoiceItemEntity
+import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.data.prefs.SettingsRepository
 import com.notathermal.app.data.repo.InvoiceRepository
@@ -34,7 +35,7 @@ data class FormState(
     val note: String = "",
     val discount: String = "",
     val taxPercent: String = "",
-    val paymentMethod: String = "TUNAI",
+    val paymentMethod: String = PaymentMethod.TUNAI,
     val paymentReceived: String = "",
     val saving: Boolean = false,
     val error: String? = null

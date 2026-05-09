@@ -2,6 +2,8 @@ package com.notathermal.app.ui.form
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -38,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.ui.common.appViewModel
 import com.notathermal.app.util.Format
 
@@ -152,15 +156,17 @@ fun InvoiceFormScreen(
                 }
             }
             item { PaymentMethodPicker(state.paymentMethod) { v -> viewModel.updateField { it.copy(paymentMethod = v) } } }
-            item {
-                OutlinedTextField(
-                    value = state.paymentReceived,
-                    onValueChange = { v -> viewModel.updateField { it.copy(paymentReceived = sanitizeNumber(v)) } },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Diterima ($currency)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true
-                )
+            if (state.paymentMethod == PaymentMethod.TUNAI) {
+                item {
+                    OutlinedTextField(
+                        value = state.paymentReceived,
+                        onValueChange = { v -> viewModel.updateField { it.copy(paymentReceived = sanitizeNumber(v)) } },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Diterima ($currency)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                }
             }
             item { TotalsCard(state, currency) }
             state.error?.let { msg ->
@@ -257,11 +263,15 @@ private fun ItemCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun PaymentMethodPicker(selected: String, onSelect: (String) -> Unit) {
-    val methods = listOf("TUNAI", "QRIS", "DEBIT", "KREDIT", "TRANSFER")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val methods = listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG)
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         methods.forEach { method ->
             FilterChip(
                 selected = selected == method,
@@ -274,7 +284,7 @@ private fun PaymentMethodPicker(selected: String, onSelect: (String) -> Unit) {
 
 @Composable
 private fun TotalsCard(state: FormState, currency: String) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -284,7 +294,15 @@ private fun TotalsCard(state: FormState, currency: String) {
             if (state.taxPercentValue > 0) TotalLine("Pajak ${Format.number(state.taxPercentValue)}%", currency, state.taxAmount)
             Spacer(Modifier.height(4.dp))
             TotalLine("TOTAL", currency, state.total, bold = true)
-            if (state.paymentReceivedValue > 0) {
+            if (state.paymentMethod == PaymentMethod.HUTANG) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "BELUM LUNAS / HUTANG",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            } else if (state.paymentReceivedValue > 0) {
                 TotalLine("Diterima", currency, state.paymentReceivedValue)
                 TotalLine("Kembali", currency, state.change, bold = true)
             }

@@ -1,0 +1,282 @@
+package com.notathermal.app.ui.pln
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.Button
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.notathermal.app.data.db.PaymentMethod
+import com.notathermal.app.ui.common.appViewModel
+import com.notathermal.app.util.Format
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun PlnTokenFormScreen(
+    onBack: () -> Unit,
+    onSaved: (Long) -> Unit
+) {
+    val viewModel = appViewModel { container ->
+        PlnTokenFormViewModel(container.invoiceRepository, container.settingsRepository)
+    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val currency = settings.currencySymbol
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Token Listrik PLN") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.save(onSaved) },
+                        enabled = state.canSave
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = "Simpan")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item { Header("Data Pelanggan & Meter") }
+            item {
+                OutlinedTextField(
+                    value = state.customerName,
+                    onValueChange = { v -> viewModel.update { it.copy(customerName = v) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Nama pelanggan (opsional)") },
+                    singleLine = true
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = state.meterNo,
+                    onValueChange = { v -> viewModel.update { it.copy(meterNo = v.filter(Char::isDigit)) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("No. meter (ID Pelanggan)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = state.kwh,
+                    onValueChange = { v -> viewModel.update { it.copy(kwh = sanitizeNumber(v)) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Jumlah kWh") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+            }
+
+            item { Header("Nomor Token / Stroom") }
+            item {
+                OutlinedTextField(
+                    value = state.tokenNumber,
+                    onValueChange = { v ->
+                        viewModel.update { it.copy(tokenNumber = formatTokenInput(v)) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Nomor Token (16-20 digit)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    placeholder = { Text("1234 5678 9012 3456 7890") }
+                )
+            }
+
+            item { Header("Pembayaran") }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = state.nominal,
+                        onValueChange = { v -> viewModel.update { it.copy(nominal = sanitizeNumber(v)) } },
+                        modifier = Modifier.weight(1.4f),
+                        label = { Text("Nominal ($currency)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = state.adminFee,
+                        onValueChange = { v -> viewModel.update { it.copy(adminFee = sanitizeNumber(v)) } },
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Admin") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                }
+            }
+            item {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG).forEach { method ->
+                        FilterChip(
+                            selected = state.paymentMethod == method,
+                            onClick = { viewModel.update { it.copy(paymentMethod = method) } },
+                            label = { Text(method) }
+                        )
+                    }
+                }
+            }
+            if (state.paymentMethod == PaymentMethod.TUNAI) {
+                item {
+                    OutlinedTextField(
+                        value = state.paymentReceived,
+                        onValueChange = { v -> viewModel.update { it.copy(paymentReceived = sanitizeNumber(v)) } },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Diterima ($currency)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                }
+            }
+            item {
+                OutlinedTextField(
+                    value = state.note,
+                    onValueChange = { v -> viewModel.update { it.copy(note = v) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Catatan (opsional)") },
+                    minLines = 2
+                )
+            }
+
+            item { TotalsCard(state, currency) }
+
+            state.error?.let { msg ->
+                item { Text(msg, color = MaterialTheme.colorScheme.error) }
+            }
+            item {
+                Button(
+                    onClick = { viewModel.save(onSaved) },
+                    enabled = state.canSave,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (state.saving) "Menyimpan…" else "Simpan & Lihat")
+                }
+            }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+private fun formatTokenInput(raw: String): String {
+    val digits = raw.filter { it.isDigit() }.take(20)
+    return digits.chunked(4).joinToString(" ")
+}
+
+private fun sanitizeNumber(v: String): String {
+    val cleaned = v.filter { it.isDigit() || it == '.' || it == ',' }
+    val firstDot = cleaned.indexOfFirst { it == '.' || it == ',' }
+    return if (firstDot < 0) cleaned else {
+        val before = cleaned.substring(0, firstDot)
+        val after = cleaned.substring(firstDot + 1).filter { it.isDigit() }
+        if (after.isEmpty()) before + cleaned[firstDot] else "$before${cleaned[firstDot]}$after"
+    }
+}
+
+@Composable
+private fun Header(text: String) {
+    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+}
+
+@Composable
+private fun TotalsCard(state: PlnFormState, currency: String) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text("Nominal", modifier = Modifier.weight(1f))
+                Text("$currency ${Format.number(state.nominalValue)}")
+            }
+            if (state.adminFeeValue > 0) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text("Admin", modifier = Modifier.weight(1f))
+                    Text("$currency ${Format.number(state.adminFeeValue)}")
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "TOTAL",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "$currency ${Format.number(state.total)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (state.paymentMethod == PaymentMethod.HUTANG) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "BELUM LUNAS / HUTANG",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            } else if (state.paymentReceivedValue > 0) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text("Diterima", modifier = Modifier.weight(1f))
+                    Text("$currency ${Format.number(state.paymentReceivedValue)}")
+                }
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Kembali",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "$currency ${Format.number(state.change)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}

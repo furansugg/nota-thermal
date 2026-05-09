@@ -11,12 +11,14 @@ import androidx.navigation.compose.rememberNavController
 import com.notathermal.app.ui.detail.InvoiceDetailScreen
 import com.notathermal.app.ui.form.InvoiceFormScreen
 import com.notathermal.app.ui.home.HomeScreen
+import com.notathermal.app.ui.pln.PlnTokenFormScreen
 import com.notathermal.app.ui.printer.PrinterScreen
 import com.notathermal.app.ui.settings.SettingsScreen
 
 object Routes {
     const val HOME = "home"
     const val NEW_INVOICE = "invoice/new"
+    const val NEW_PLN_TOKEN = "invoice/new-pln"
     const val INVOICE_DETAIL = "invoice/{id}"
     const val SETTINGS = "settings"
     const val PRINTER = "printer"
@@ -32,6 +34,7 @@ fun NotaApp() {
             composable(Routes.HOME) {
                 HomeScreen(
                     onCreateInvoice = { navController.navigate(Routes.NEW_INVOICE) },
+                    onCreatePlnToken = { navController.navigate(Routes.NEW_PLN_TOKEN) },
                     onOpenInvoice = { id -> navController.navigate(Routes.invoiceDetail(id)) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                     onOpenPrinter = { navController.navigate(Routes.PRINTER) }
@@ -39,6 +42,15 @@ fun NotaApp() {
             }
             composable(Routes.NEW_INVOICE) {
                 InvoiceFormScreen(
+                    onBack = { navController.popBackStack() },
+                    onSaved = { id ->
+                        navController.popBackStack()
+                        navController.navigate(Routes.invoiceDetail(id))
+                    }
+                )
+            }
+            composable(Routes.NEW_PLN_TOKEN) {
+                PlnTokenFormScreen(
                     onBack = { navController.popBackStack() },
                     onSaved = { id ->
                         navController.popBackStack()
