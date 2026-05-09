@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,6 +38,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.ui.common.appViewModel
 import com.notathermal.app.util.Format
+
+private val PLN_PAYMENT_METHODS = listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -47,9 +50,10 @@ fun PlnTokenFormScreen(
     val viewModel = appViewModel { container ->
         PlnTokenFormViewModel(container.invoiceRepository, container.settingsRepository)
     }
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val holder = viewModel.holder
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val currency = settings.currencySymbol
+    val onSave = remember(viewModel, onSaved) { { viewModel.save(onSaved) } }
 
     Scaffold(
         topBar = {
@@ -61,10 +65,7 @@ fun PlnTokenFormScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { viewModel.save(onSaved) },
-                        enabled = state.canSave
-                    ) {
+                    IconButton(onClick = onSave, enabled = holder.canSave) {
                         Icon(Icons.Default.Save, contentDescription = "Simpan")
                     }
                 }
@@ -79,8 +80,8 @@ fun PlnTokenFormScreen(
             item { Header("Data Pelanggan & Meter") }
             item {
                 OutlinedTextField(
-                    value = state.customerName,
-                    onValueChange = { v -> viewModel.update { it.copy(customerName = v) } },
+                    value = holder.customerName,
+                    onValueChange = { holder.customerName = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Nama pelanggan (opsional)") },
                     singleLine = true
@@ -88,8 +89,8 @@ fun PlnTokenFormScreen(
             }
             item {
                 OutlinedTextField(
-                    value = state.meterNo,
-                    onValueChange = { v -> viewModel.update { it.copy(meterNo = v.filter(Char::isDigit)) } },
+                    value = holder.meterNo,
+                    onValueChange = { holder.meterNo = it.filter(Char::isDigit) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("No. meter (ID Pelanggan)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -98,8 +99,8 @@ fun PlnTokenFormScreen(
             }
             item {
                 OutlinedTextField(
-                    value = state.kwh,
-                    onValueChange = { v -> viewModel.update { it.copy(kwh = sanitizeNumber(v)) } },
+                    value = holder.kwh,
+                    onValueChange = { holder.kwh = sanitizeNumber(it) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Jumlah kWh") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -110,10 +111,8 @@ fun PlnTokenFormScreen(
             item { Header("Nomor Token / Stroom") }
             item {
                 OutlinedTextField(
-                    value = state.tokenNumber,
-                    onValueChange = { v ->
-                        viewModel.update { it.copy(tokenNumber = formatTokenInput(v)) }
-                    },
+                    value = holder.tokenNumber,
+                    onValueChange = { holder.tokenNumber = formatTokenInput(it) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Nomor Token (16-20 digit)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -126,16 +125,16 @@ fun PlnTokenFormScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = state.nominal,
-                        onValueChange = { v -> viewModel.update { it.copy(nominal = sanitizeNumber(v)) } },
+                        value = holder.nominal,
+                        onValueChange = { holder.nominal = sanitizeNumber(it) },
                         modifier = Modifier.weight(1.4f),
                         label = { Text("Nominal ($currency)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true
                     )
                     OutlinedTextField(
-                        value = state.adminFee,
-                        onValueChange = { v -> viewModel.update { it.copy(adminFee = sanitizeNumber(v)) } },
+                        value = holder.adminFee,
+                        onValueChange = { holder.adminFee = sanitizeNumber(it) },
                         modifier = Modifier.weight(1f),
                         label = { Text("Admin") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -149,20 +148,20 @@ fun PlnTokenFormScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG).forEach { method ->
+                    PLN_PAYMENT_METHODS.forEach { method ->
                         FilterChip(
-                            selected = state.paymentMethod == method,
-                            onClick = { viewModel.update { it.copy(paymentMethod = method) } },
+                            selected = holder.paymentMethod == method,
+                            onClick = { holder.paymentMethod = method },
                             label = { Text(method) }
                         )
                     }
                 }
             }
-            if (state.paymentMethod == PaymentMethod.TUNAI) {
+            if (holder.paymentMethod == PaymentMethod.TUNAI) {
                 item {
                     OutlinedTextField(
-                        value = state.paymentReceived,
-                        onValueChange = { v -> viewModel.update { it.copy(paymentReceived = sanitizeNumber(v)) } },
+                        value = holder.paymentReceived,
+                        onValueChange = { holder.paymentReceived = sanitizeNumber(it) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Diterima ($currency)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -172,26 +171,26 @@ fun PlnTokenFormScreen(
             }
             item {
                 OutlinedTextField(
-                    value = state.note,
-                    onValueChange = { v -> viewModel.update { it.copy(note = v) } },
+                    value = holder.note,
+                    onValueChange = { holder.note = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Catatan (opsional)") },
                     minLines = 2
                 )
             }
 
-            item { TotalsCard(state, currency) }
+            item { TotalsCard(holder, currency) }
 
-            state.error?.let { msg ->
+            holder.error?.let { msg ->
                 item { Text(msg, color = MaterialTheme.colorScheme.error) }
             }
             item {
                 Button(
-                    onClick = { viewModel.save(onSaved) },
-                    enabled = state.canSave,
+                    onClick = onSave,
+                    enabled = holder.canSave,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (state.saving) "Menyimpan…" else "Simpan & Lihat")
+                    Text(if (holder.saving) "Menyimpan…" else "Simpan & Lihat")
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -220,7 +219,7 @@ private fun Header(text: String) {
 }
 
 @Composable
-private fun TotalsCard(state: PlnFormState, currency: String) {
+private fun TotalsCard(holder: PlnFormStateHolder, currency: String) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -228,12 +227,12 @@ private fun TotalsCard(state: PlnFormState, currency: String) {
         ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text("Nominal", modifier = Modifier.weight(1f))
-                Text("$currency ${Format.number(state.nominalValue)}")
+                Text("$currency ${Format.number(holder.nominalValue)}")
             }
-            if (state.adminFeeValue > 0) {
+            if (holder.adminFeeValue > 0) {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("Admin", modifier = Modifier.weight(1f))
-                    Text("$currency ${Format.number(state.adminFeeValue)}")
+                    Text("$currency ${Format.number(holder.adminFeeValue)}")
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -245,12 +244,12 @@ private fun TotalsCard(state: PlnFormState, currency: String) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "$currency ${Format.number(state.total)}",
+                    "$currency ${Format.number(holder.total)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
-            if (state.paymentMethod == PaymentMethod.HUTANG) {
+            if (holder.paymentMethod == PaymentMethod.HUTANG) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "BELUM LUNAS / HUTANG",
@@ -258,10 +257,10 @@ private fun TotalsCard(state: PlnFormState, currency: String) {
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold
                 )
-            } else if (state.paymentReceivedValue > 0) {
+            } else if (holder.paymentReceivedValue > 0) {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("Diterima", modifier = Modifier.weight(1f))
-                    Text("$currency ${Format.number(state.paymentReceivedValue)}")
+                    Text("$currency ${Format.number(holder.paymentReceivedValue)}")
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -271,7 +270,7 @@ private fun TotalsCard(state: PlnFormState, currency: String) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "$currency ${Format.number(state.change)}",
+                        "$currency ${Format.number(holder.change)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

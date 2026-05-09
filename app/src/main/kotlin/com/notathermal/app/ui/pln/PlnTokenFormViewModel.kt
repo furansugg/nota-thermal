@@ -1,49 +1,58 @@
 package com.notathermal.app.ui.pln
 
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.data.prefs.SettingsRepository
 import com.notathermal.app.data.repo.InvoiceRepository
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class PlnFormState(
-    val customerName: String = "",
-    val meterNo: String = "",
-    val kwh: String = "",
-    val tokenNumber: String = "",
-    val nominal: String = "",
-    val adminFee: String = "2500",
-    val paymentMethod: String = PaymentMethod.TUNAI,
-    val paymentReceived: String = "",
-    val note: String = "",
-    val saving: Boolean = false,
-    val error: String? = null
-) {
+/**
+ * Compose-snapshot-backed state holder. Each property is observable
+ * independently, so editing a single field doesn't recompose the entire form.
+ */
+@Stable
+class PlnFormStateHolder {
+    var customerName by mutableStateOf("")
+    var meterNo by mutableStateOf("")
+    var kwh by mutableStateOf("")
+    var tokenNumber by mutableStateOf("")
+    var nominal by mutableStateOf("")
+    var adminFee by mutableStateOf("2500")
+    var paymentMethod by mutableStateOf(PaymentMethod.TUNAI)
+    var paymentReceived by mutableStateOf("")
+    var note by mutableStateOf("")
+    var saving by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
+
     val kwhValue: Double get() = kwh.replace(',', '.').toDoubleOrNull() ?: 0.0
     val nominalValue: Double get() = nominal.replace(',', '.').toDoubleOrNull() ?: 0.0
     val adminFeeValue: Double get() = adminFee.replace(',', '.').toDoubleOrNull() ?: 0.0
     val total: Double get() = (nominalValue + adminFeeValue).coerceAtLeast(0.0)
     val paymentReceivedValue: Double get() = paymentReceived.replace(',', '.').toDoubleOrNull() ?: 0.0
-    val change: Double get() =
-        if (paymentMethod == PaymentMethod.HUTANG) 0.0
+    val change: Double
+        get() = if (paymentMethod == PaymentMethod.HUTANG) 0.0
         else (paymentReceivedValue - total).coerceAtLeast(0.0)
 
     val tokenDigits: String get() = tokenNumber.filter { it.isDigit() }
 
-    val canSave: Boolean
-        get() = !saving &&
+    private val canSaveState = derivedStateOf {
+        !saving &&
             meterNo.isNotBlank() &&
             kwhValue > 0 &&
             tokenDigits.length >= 16 &&
             nominalValue > 0
+    }
+    val canSave: Boolean get() = canSaveState.value
 }
 
 class PlnTokenFormViewModel(
@@ -51,39 +60,33 @@ class PlnTokenFormViewModel(
     settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(PlnFormState())
-    val state: StateFlow<PlnFormState> = _state.asStateFlow()
+    val holder = PlnFormStateHolder()
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings.Default)
 
-    fun update(transform: (PlnFormState) -> PlnFormState) {
-        _state.update(transform)
-    }
-
     fun save(onSaved: (Long) -> Unit) {
-        val current = _state.value
-        if (!current.canSave) return
-        _state.update { it.copy(saving = true, error = null) }
+        if (!holder.canSave) return
+        holder.saving = true
+        holder.error = null
         viewModelScope.launch {
             try {
                 val id = invoiceRepository.createPlnTokenInvoice(
-                    meterNo = current.meterNo.trim(),
-                    customerName = current.customerName.trim(),
-                    kwh = current.kwhValue,
-                    tokenNumber = current.tokenDigits,
-                    nominal = current.nominalValue,
-                    adminFee = current.adminFeeValue,
-                    paymentMethod = current.paymentMethod,
-                    paymentReceived = current.paymentReceivedValue,
-                    note = current.note.trim()
+                    meterNo = holder.meterNo.trim(),
+                    customerName = holder.customerName.trim(),
+                    kwh = holder.kwhValue,
+                    tokenNumber = holder.tokenDigits,
+                    nominal = holder.nominalValue,
+                    adminFee = holder.adminFeeValue,
+                    paymentMethod = holder.paymentMethod,
+                    paymentReceived = holder.paymentReceivedValue,
+                    note = holder.note.trim()
                 )
-                _state.update { it.copy(saving = false) }
+                holder.saving = false
                 onSaved(id)
             } catch (t: Throwable) {
-                _state.update {
-                    it.copy(saving = false, error = t.message ?: "Gagal menyimpan struk")
-                }
+                holder.saving = false
+                holder.error = t.message ?: "Gagal menyimpan struk"
             }
         }
     }

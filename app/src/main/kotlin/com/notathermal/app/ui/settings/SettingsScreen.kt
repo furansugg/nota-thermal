@@ -3,15 +3,15 @@ package com.notathermal.app.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -41,6 +41,9 @@ import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.domain.PaperWidth
 import com.notathermal.app.domain.TextAlign
 import com.notathermal.app.ui.common.appViewModel
+
+private val PAPER_WIDTHS: List<PaperWidth> = PaperWidth.values().toList()
+private val TEXT_ALIGNS: List<TextAlign> = TextAlign.values().toList()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,57 +133,53 @@ private fun SettingsForm(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
+        // Use a regular vertical-scroll Column for a fixed-size form: avoids
+        // LazyColumn's per-item compose/measure overhead which causes visible
+        // jank when scrolling past unmeasured TextField items.
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(scrollState)
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { Section("Data Toko") }
-            item {
-                OutlinedTextField(
-                    value = storeName,
-                    onValueChange = { storeName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Nama toko") },
-                    singleLine = true
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = storeAddress,
-                    onValueChange = { storeAddress = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Alamat") },
-                    minLines = 2
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = storePhone,
-                    onValueChange = { storePhone = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Telepon") },
-                    singleLine = true
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = headerText,
-                    onValueChange = { headerText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Header tambahan (opsional)") },
-                    minLines = 2
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = footerText,
-                    onValueChange = { footerText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Footer (kalimat penutup)") },
-                    minLines = 2
-                )
-            }
+            Section("Data Toko")
+            OutlinedTextField(
+                value = storeName,
+                onValueChange = { storeName = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Nama toko") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = storeAddress,
+                onValueChange = { storeAddress = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Alamat") },
+                minLines = 2
+            )
+            OutlinedTextField(
+                value = storePhone,
+                onValueChange = { storePhone = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Telepon") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = headerText,
+                onValueChange = { headerText = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Header tambahan (opsional)") },
+                minLines = 2
+            )
+            OutlinedTextField(
+                value = footerText,
+                onValueChange = { footerText = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Footer (kalimat penutup)") },
+                minLines = 2
+            )
 
             item { Section("Cetak") }
             item {
@@ -213,32 +212,30 @@ private fun SettingsForm(
                     }
                 }
             }
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = currency,
-                        onValueChange = { currency = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Mata uang") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = copies,
-                        onValueChange = { copies = it.filter(Char::isDigit).take(2) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Jumlah copy") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
+            Text("Alignment header / footer", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TEXT_ALIGNS.forEach { a ->
+                    FilterChip(
+                        selected = titleAlign == a,
+                        onClick = { titleAlign = a },
+                        label = { Text(a.name) }
                     )
                 }
             }
-            item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = taxPercent,
-                    onValueChange = { taxPercent = it.replace(',', '.').filter { c -> c.isDigit() || c == '.' } },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Pajak default (%)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    value = currency,
+                    onValueChange = { currency = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Mata uang") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = copies,
+                    onValueChange = { copies = it.filter(Char::isDigit).take(2) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Jumlah copy") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
             }
