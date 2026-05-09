@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
@@ -67,7 +68,8 @@ fun HomeScreen(
     onCreatePlnToken: () -> Unit,
     onOpenInvoice: (Long) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenPrinter: () -> Unit
+    onOpenPrinter: () -> Unit,
+    onOpenPrintImage: () -> Unit
 ) {
     val viewModel = appViewModel { container ->
         HomeViewModel(container.invoiceRepository, container.settingsRepository)
@@ -97,6 +99,9 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenPrintImage) {
+                        Icon(Icons.Default.Image, contentDescription = "Cetak gambar")
+                    }
                     IconButton(onClick = onOpenPrinter) {
                         Icon(Icons.Default.Bluetooth, contentDescription = "Printer")
                     }
