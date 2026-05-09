@@ -138,7 +138,12 @@ class BluetoothPrinterService(private val context: Context) {
     }
 
     private fun createPrinter(connection: BluetoothConnection, paperWidth: PaperWidth): EscPosPrinter {
-        val widthMm = paperWidth.mm
+        // The library expects the *printable* width (not the paper width) so
+        // that `printerWidthPx` matches the actual print-head dot count.
+        // Using the raw paper width here makes images render narrower than
+        // the printable area, which is what produced the "image too small"
+        // bug in earlier versions.
+        val widthMm = paperWidth.printableWidthMm
         val charsPerLine = paperWidth.charsNormal
         return EscPosPrinter(connection, 203, widthMm, charsPerLine)
     }
