@@ -10,7 +10,7 @@ import com.notathermal.app.print.ReceiptComposer
 
 /** Manual DI container — created in [com.notathermal.app.NotaApp]. */
 class AppContainer(context: Context) {
-    private val appContext: Context = context.applicationContext
+    val appContext: Context = context.applicationContext
 
     private val db: AppDatabase = Room.databaseBuilder(
         appContext,
