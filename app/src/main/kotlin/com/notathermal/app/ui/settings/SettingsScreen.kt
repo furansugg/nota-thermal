@@ -1,6 +1,7 @@
 package com.notathermal.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -25,7 +27,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.domain.PaperWidth
 import com.notathermal.app.domain.TextAlign
 import com.notathermal.app.ui.common.appViewModel
@@ -47,44 +49,77 @@ private val TEXT_ALIGNS: List<TextAlign> = TextAlign.values().toList()
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val viewModel = appViewModel { container -> SettingsViewModel(container.settingsRepository) }
-    val current by viewModel.settings.collectAsStateWithLifecycle()
+    val loaded by viewModel.settings.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
 
-    var initialized by rememberSaveable { mutableStateOf(false) }
-    var storeName by rememberSaveable { mutableStateOf("") }
-    var storeAddress by rememberSaveable { mutableStateOf("") }
-    var storePhone by rememberSaveable { mutableStateOf("") }
-    var headerText by rememberSaveable { mutableStateOf("") }
-    var footerText by rememberSaveable { mutableStateOf("") }
-    var paperWidth by rememberSaveable { mutableStateOf(PaperWidth.MM_58) }
-    var titleAlign by rememberSaveable { mutableStateOf(TextAlign.CENTER) }
-    var currency by rememberSaveable { mutableStateOf("Rp") }
-    var showCashier by rememberSaveable { mutableStateOf(false) }
-    var showCustomer by rememberSaveable { mutableStateOf(true) }
-    var cutPaper by rememberSaveable { mutableStateOf(true) }
-    var copies by rememberSaveable { mutableStateOf("1") }
-    var taxPercent by rememberSaveable { mutableStateOf("0") }
-
-    LaunchedEffect(current) {
-        if (!initialized) {
-            storeName = current.storeName
-            storeAddress = current.storeAddress
-            storePhone = current.storePhone
-            headerText = current.headerText
-            footerText = current.footerText
-            paperWidth = current.paperWidth
-            titleAlign = current.titleAlignment
-            currency = current.currencySymbol
-            showCashier = current.showCashier
-            showCustomer = current.showCustomer
-            cutPaper = current.cutPaper
-            copies = current.copies.toString()
-            taxPercent = current.taxPercentDefault.toString()
-            initialized = true
+    val current = loaded
+    if (current == null) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Pengaturan") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
+        return
     }
 
-    val scrollState = rememberScrollState()
+    SettingsForm(
+        initial = current,
+        saving = saving,
+        onBack = onBack,
+        onSave = viewModel::save
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsForm(
+    initial: AppSettings,
+    saving: Boolean,
+    onBack: () -> Unit,
+    onSave: (
+        storeName: String,
+        storeAddress: String,
+        storePhone: String,
+        headerText: String,
+        footerText: String,
+        paperWidth: PaperWidth,
+        titleAlignment: TextAlign,
+        currencySymbol: String,
+        showCashier: Boolean,
+        showCustomer: Boolean,
+        cutPaper: Boolean,
+        copies: Int,
+        taxPercentDefault: Double,
+        onDone: () -> Unit
+    ) -> Unit
+) {
+    var storeName by rememberSaveable { mutableStateOf(initial.storeName) }
+    var storeAddress by rememberSaveable { mutableStateOf(initial.storeAddress) }
+    var storePhone by rememberSaveable { mutableStateOf(initial.storePhone) }
+    var headerText by rememberSaveable { mutableStateOf(initial.headerText) }
+    var footerText by rememberSaveable { mutableStateOf(initial.footerText) }
+    var paperWidth by rememberSaveable { mutableStateOf(initial.paperWidth) }
+    var titleAlign by rememberSaveable { mutableStateOf(initial.titleAlignment) }
+    var currency by rememberSaveable { mutableStateOf(initial.currencySymbol) }
+    var showCashier by rememberSaveable { mutableStateOf(initial.showCashier) }
+    var showCustomer by rememberSaveable { mutableStateOf(initial.showCustomer) }
+    var cutPaper by rememberSaveable { mutableStateOf(initial.cutPaper) }
+    var copies by rememberSaveable { mutableStateOf(initial.copies.toString()) }
+    var taxPercent by rememberSaveable { mutableStateOf(initial.taxPercentDefault.toString()) }
 
     Scaffold(
         topBar = {
@@ -146,15 +181,35 @@ fun SettingsScreen(onBack: () -> Unit) {
                 minLines = 2
             )
 
-            Section("Cetak")
-            Text("Ukuran kertas", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PAPER_WIDTHS.forEach { p ->
-                    FilterChip(
-                        selected = paperWidth == p,
-                        onClick = { paperWidth = p },
-                        label = { Text("${p.mm.toInt()}mm") }
-                    )
+            item { Section("Cetak") }
+            item {
+                Column {
+                    Text("Ukuran kertas", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PaperWidth.values().forEach { p ->
+                            FilterChip(
+                                selected = paperWidth == p,
+                                onClick = { paperWidth = p },
+                                label = { Text("${p.mm.toInt()}mm") }
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Column {
+                    Text("Alignment header / footer", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextAlign.values().forEach { a ->
+                            FilterChip(
+                                selected = titleAlign == a,
+                                onClick = { titleAlign = a },
+                                label = { Text(a.name) }
+                            )
+                        }
+                    }
                 }
             }
             Text("Alignment header / footer", style = MaterialTheme.typography.labelLarge)
@@ -184,60 +239,58 @@ fun SettingsScreen(onBack: () -> Unit) {
                     singleLine = true
                 )
             }
-            OutlinedTextField(
-                value = taxPercent,
-                onValueChange = { taxPercent = it.replace(',', '.').filter { c -> c.isDigit() || c == '.' } },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Pajak default (%)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
-            )
-            ToggleRow("Auto cut kertas", cutPaper) { cutPaper = it }
-            ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it }
-            ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it }
+            item { ToggleRow("Auto cut kertas", cutPaper) { cutPaper = it } }
+            item { ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it } }
+            item { ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it } }
 
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    viewModel.save(
-                        storeName = storeName,
-                        storeAddress = storeAddress,
-                        storePhone = storePhone,
-                        headerText = headerText,
-                        footerText = footerText,
-                        paperWidth = paperWidth,
-                        titleAlignment = titleAlign,
-                        currencySymbol = currency.ifBlank { "Rp" },
-                        showCashier = showCashier,
-                        showCustomer = showCustomer,
-                        cutPaper = cutPaper,
-                        copies = copies.toIntOrNull() ?: 1,
-                        taxPercentDefault = taxPercent.toDoubleOrNull() ?: 0.0,
-                        onDone = onBack
-                    )
-                },
-                enabled = !saving,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (saving) "Menyimpan…" else "Simpan")
+            item {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        onSave(
+                            storeName,
+                            storeAddress,
+                            storePhone,
+                            headerText,
+                            footerText,
+                            paperWidth,
+                            titleAlign,
+                            currency.ifBlank { "Rp" },
+                            showCashier,
+                            showCustomer,
+                            cutPaper,
+                            copies.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                            taxPercent.toDoubleOrNull() ?: 0.0,
+                            onBack
+                        )
+                    },
+                    enabled = !saving,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (saving) "Menyimpan…" else "Simpan")
+                }
+                Spacer(Modifier.height(24.dp))
             }
-            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-private fun Section(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+private fun Section(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold
+    )
 }
 
 @Composable
-private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = value, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }

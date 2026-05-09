@@ -105,6 +105,17 @@ class InvoiceDetailViewModel(
         }
     }
 
+    fun markPaid(paymentMethod: String, paymentReceived: Double) {
+        viewModelScope.launch {
+            try {
+                invoiceRepository.markAsPaid(invoiceId, paymentMethod, paymentReceived)
+                _state.update { it.copy(statusMessage = "Invoice ditandai LUNAS") }
+            } catch (t: Throwable) {
+                _state.update { it.copy(errorMessage = t.message ?: "Gagal memperbarui status") }
+            }
+        }
+    }
+
     fun clearMessages() {
         _state.update { it.copy(statusMessage = null, errorMessage = null) }
     }

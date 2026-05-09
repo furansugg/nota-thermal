@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,11 +25,10 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -127,17 +126,21 @@ fun HomeScreen(
                 SummaryStrip(invoices = invoices, currency = settings.currencySymbol)
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)
                 ) {
-                    items(invoices, key = { it.id }) { invoice ->
+                    itemsIndexed(invoices, key = { _, it -> it.id }) { index, invoice ->
                         InvoiceRow(
                             invoice = invoice,
                             currency = settings.currencySymbol,
                             onClick = { onOpenInvoice(invoice.id) }
                         )
+                        if (index < invoices.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                        }
                     }
-                    item { Spacer(Modifier.height(96.dp)) }
                 }
             }
         }
@@ -287,82 +290,64 @@ private fun StatCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InvoiceRow(invoice: InvoiceEntity, currency: String, onClick: () -> Unit) {
     val isPln = invoice.invoiceType == InvoiceType.PLN_TOKEN
     val isHutang = invoice.paymentMethod == PaymentMethod.HUTANG
 
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        if (isPln) MaterialTheme.colorScheme.tertiaryContainer
-                        else MaterialTheme.colorScheme.primaryContainer,
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    if (isPln) Icons.Default.ElectricBolt else Icons.Default.Receipt,
-                    contentDescription = null,
-                    tint = if (isPln) MaterialTheme.colorScheme.onTertiaryContainer
-                        else MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            Spacer(Modifier.size(12.dp))
-            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        invoice.code,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isPln) {
+                    Icon(
+                        Icons.Default.ElectricBolt,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.tertiary
                     )
-                    if (isHutang) {
-                        Spacer(Modifier.size(8.dp))
-                        StatusPill("HUTANG", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
-                    } else if (isPln) {
-                        Spacer(Modifier.size(8.dp))
-                        StatusPill("PLN", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
-                    }
+                    Spacer(Modifier.size(4.dp))
                 }
                 Text(
-                    invoice.customerName ?: "Tanpa pelanggan",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    invoice.code,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
                 )
-                Text(
-                    Format.datetime(invoice.createdAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (isHutang) {
+                    Spacer(Modifier.size(8.dp))
+                    StatusPill(
+                        text = "HUTANG",
+                        container = MaterialTheme.colorScheme.errorContainer,
+                        content = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
-            Spacer(Modifier.size(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "$currency ${Format.number(invoice.total)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    invoice.paymentMethod,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            val subtitle = buildString {
+                invoice.customerName?.takeIf { it.isNotBlank() }?.let {
+                    append(it)
+                    append(" · ")
+                }
+                append(Format.datetime(invoice.createdAt))
             }
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+        Spacer(Modifier.size(12.dp))
+        Text(
+            "$currency ${Format.number(invoice.total)}",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isHutang) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
