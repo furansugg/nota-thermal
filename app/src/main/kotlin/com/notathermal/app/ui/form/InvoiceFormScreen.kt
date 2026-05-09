@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,8 @@ import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.ui.common.appViewModel
 import com.notathermal.app.util.Format
 
+private val PAYMENT_METHODS = listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceFormScreen(
@@ -54,9 +57,10 @@ fun InvoiceFormScreen(
     val viewModel = appViewModel { container ->
         InvoiceFormViewModel(container.invoiceRepository, container.settingsRepository)
     }
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val holder = viewModel.holder
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val currency = settings.currencySymbol
+    val onSave = remember(viewModel, onSaved) { { viewModel.save(onSaved) } }
 
     Scaffold(
         topBar = {
@@ -68,10 +72,7 @@ fun InvoiceFormScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { viewModel.save(onSaved) },
-                        enabled = state.canSave
-                    ) {
+                    IconButton(onClick = onSave, enabled = holder.canSave) {
                         Icon(Icons.Default.Save, contentDescription = "Simpan")
                     }
                 }
@@ -84,18 +85,17 @@ fun InvoiceFormScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { SectionHeader("Daftar Item") }
-            items(state.items, key = { it.id }) { draft ->
+            items(holder.items, key = { it.id }) { itemHolder ->
                 ItemCard(
-                    draft = draft,
+                    itemHolder = itemHolder,
                     currency = currency,
-                    onChange = { transform -> viewModel.updateItem(draft.id, transform) },
-                    onRemove = { viewModel.removeItem(draft.id) },
-                    canRemove = state.items.size > 1
+                    canRemove = holder.items.size > 1,
+                    onRemove = { holder.removeItem(itemHolder.id) }
                 )
             }
             item {
                 OutlinedButton(
-                    onClick = { viewModel.addItem() },
+                    onClick = { holder.addItem() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
@@ -106,8 +106,8 @@ fun InvoiceFormScreen(
             item { SectionHeader("Pelanggan & Catatan") }
             item {
                 OutlinedTextField(
-                    value = state.customerName,
-                    onValueChange = { v -> viewModel.updateField { it.copy(customerName = v) } },
+                    value = holder.customerName,
+                    onValueChange = { holder.customerName = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Nama pelanggan (opsional)") },
                     singleLine = true
@@ -115,8 +115,8 @@ fun InvoiceFormScreen(
             }
             item {
                 OutlinedTextField(
-                    value = state.cashierName,
-                    onValueChange = { v -> viewModel.updateField { it.copy(cashierName = v) } },
+                    value = holder.cashierName,
+                    onValueChange = { holder.cashierName = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Nama kasir (opsional)") },
                     singleLine = true
@@ -124,8 +124,8 @@ fun InvoiceFormScreen(
             }
             item {
                 OutlinedTextField(
-                    value = state.note,
-                    onValueChange = { v -> viewModel.updateField { it.copy(note = v) } },
+                    value = holder.note,
+                    onValueChange = { holder.note = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Catatan (opsional)") },
                     minLines = 2
@@ -138,16 +138,16 @@ fun InvoiceFormScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
-                        value = state.discount,
-                        onValueChange = { v -> viewModel.updateField { it.copy(discount = sanitizeNumber(v)) } },
+                        value = holder.discount,
+                        onValueChange = { holder.discount = sanitizeNumber(it) },
                         modifier = Modifier.weight(1f),
                         label = { Text("Diskon ($currency)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true
                     )
                     OutlinedTextField(
-                        value = state.taxPercent,
-                        onValueChange = { v -> viewModel.updateField { it.copy(taxPercent = sanitizeNumber(v)) } },
+                        value = holder.taxPercent,
+                        onValueChange = { holder.taxPercent = sanitizeNumber(it) },
                         modifier = Modifier.weight(1f),
                         label = { Text("Pajak (%)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -155,12 +155,17 @@ fun InvoiceFormScreen(
                     )
                 }
             }
-            item { PaymentMethodPicker(state.paymentMethod) { v -> viewModel.updateField { it.copy(paymentMethod = v) } } }
-            if (state.paymentMethod == PaymentMethod.TUNAI) {
+            item {
+                PaymentMethodPicker(
+                    selected = holder.paymentMethod,
+                    onSelect = { holder.paymentMethod = it }
+                )
+            }
+            if (holder.paymentMethod == PaymentMethod.TUNAI) {
                 item {
                     OutlinedTextField(
-                        value = state.paymentReceived,
-                        onValueChange = { v -> viewModel.updateField { it.copy(paymentReceived = sanitizeNumber(v)) } },
+                        value = holder.paymentReceived,
+                        onValueChange = { holder.paymentReceived = sanitizeNumber(it) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Diterima ($currency)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -168,17 +173,17 @@ fun InvoiceFormScreen(
                     )
                 }
             }
-            item { TotalsCard(state, currency) }
-            state.error?.let { msg ->
+            item { TotalsCard(holder, currency) }
+            holder.error?.let { msg ->
                 item { Text(msg, color = MaterialTheme.colorScheme.error) }
             }
             item {
                 Button(
-                    onClick = { viewModel.save(onSaved) },
-                    enabled = state.canSave,
+                    onClick = onSave,
+                    enabled = holder.canSave,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (state.saving) "Menyimpan…" else "Simpan & Lihat")
+                    Text(if (holder.saving) "Menyimpan…" else "Simpan & Lihat")
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -203,11 +208,10 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun ItemCard(
-    draft: ItemDraft,
+    itemHolder: ItemDraftHolder,
     currency: String,
-    onChange: ((ItemDraft) -> ItemDraft) -> Unit,
-    onRemove: () -> Unit,
-    canRemove: Boolean
+    canRemove: Boolean,
+    onRemove: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -216,8 +220,8 @@ private fun ItemCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
-                    value = draft.name,
-                    onValueChange = { v -> onChange { it.copy(name = v) } },
+                    value = itemHolder.name,
+                    onValueChange = { itemHolder.name = it },
                     modifier = Modifier.weight(1f),
                     label = { Text("Nama item") },
                     singleLine = true
@@ -230,24 +234,24 @@ private fun ItemCard(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = draft.quantity,
-                    onValueChange = { v -> onChange { it.copy(quantity = sanitizeNumber(v)) } },
+                    value = itemHolder.quantity,
+                    onValueChange = { itemHolder.quantity = sanitizeNumber(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Qty") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
                 OutlinedTextField(
-                    value = draft.price,
-                    onValueChange = { v -> onChange { it.copy(price = sanitizeNumber(v)) } },
+                    value = itemHolder.price,
+                    onValueChange = { itemHolder.price = sanitizeNumber(it) },
                     modifier = Modifier.weight(1.4f),
                     label = { Text("Harga") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
                 OutlinedTextField(
-                    value = draft.discount,
-                    onValueChange = { v -> onChange { it.copy(discount = sanitizeNumber(v)) } },
+                    value = itemHolder.discount,
+                    onValueChange = { itemHolder.discount = sanitizeNumber(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Diskon") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -255,7 +259,7 @@ private fun ItemCard(
                 )
             }
             Text(
-                "Subtotal: $currency ${Format.number(draft.subtotal)}",
+                "Subtotal: $currency ${Format.number(itemHolder.subtotal)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -266,13 +270,12 @@ private fun ItemCard(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun PaymentMethodPicker(selected: String, onSelect: (String) -> Unit) {
-    val methods = listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG)
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        methods.forEach { method ->
+        PAYMENT_METHODS.forEach { method ->
             FilterChip(
                 selected = selected == method,
                 onClick = { onSelect(method) },
@@ -283,18 +286,20 @@ private fun PaymentMethodPicker(selected: String, onSelect: (String) -> Unit) {
 }
 
 @Composable
-private fun TotalsCard(state: FormState, currency: String) {
+private fun TotalsCard(holder: InvoiceFormStateHolder, currency: String) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            TotalLine("Subtotal", currency, state.subtotal)
-            if (state.discountValue > 0) TotalLine("Diskon", currency, -state.discountValue)
-            if (state.taxPercentValue > 0) TotalLine("Pajak ${Format.number(state.taxPercentValue)}%", currency, state.taxAmount)
+            TotalLine("Subtotal", currency, holder.subtotal)
+            if (holder.discountValue > 0) TotalLine("Diskon", currency, -holder.discountValue)
+            if (holder.taxPercentValue > 0) {
+                TotalLine("Pajak ${Format.number(holder.taxPercentValue)}%", currency, holder.taxAmount)
+            }
             Spacer(Modifier.height(4.dp))
-            TotalLine("TOTAL", currency, state.total, bold = true)
-            if (state.paymentMethod == PaymentMethod.HUTANG) {
+            TotalLine("TOTAL", currency, holder.total, bold = true)
+            if (holder.paymentMethod == PaymentMethod.HUTANG) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "BELUM LUNAS / HUTANG",
@@ -302,9 +307,9 @@ private fun TotalsCard(state: FormState, currency: String) {
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold
                 )
-            } else if (state.paymentReceivedValue > 0) {
-                TotalLine("Diterima", currency, state.paymentReceivedValue)
-                TotalLine("Kembali", currency, state.change, bold = true)
+            } else if (holder.paymentReceivedValue > 0) {
+                TotalLine("Diterima", currency, holder.paymentReceivedValue)
+                TotalLine("Kembali", currency, holder.change, bold = true)
             }
         }
     }
