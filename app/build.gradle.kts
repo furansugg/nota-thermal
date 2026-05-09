@@ -81,7 +81,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.escpos.thermalprinter)
-    implementation(libs.androidx.exifinterface)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 
