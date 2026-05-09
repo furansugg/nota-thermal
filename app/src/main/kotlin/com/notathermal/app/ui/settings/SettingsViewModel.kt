@@ -18,8 +18,14 @@ class SettingsViewModel(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    val settings: StateFlow<AppSettings> = settingsRepository.settings
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings.Default)
+    /**
+     * Emits null while the saved settings are still loading from DataStore. Once
+     * loaded, emits the actual stored values. Using null (rather than
+     * AppSettings.Default) avoids the race where the form pre-fills with the
+     * default values before the persisted ones arrive.
+     */
+    val settings: StateFlow<AppSettings?> = settingsRepository.settings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _saving = MutableStateFlow(false)
     val saving: StateFlow<Boolean> = _saving.asStateFlow()
