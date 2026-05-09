@@ -13,7 +13,6 @@ import com.notathermal.app.ui.form.InvoiceFormScreen
 import com.notathermal.app.ui.home.HomeScreen
 import com.notathermal.app.ui.pln.PlnTokenFormScreen
 import com.notathermal.app.ui.printer.PrinterScreen
-import com.notathermal.app.ui.printimage.PrintImageScreen
 import com.notathermal.app.ui.settings.SettingsScreen
 
 object Routes {
@@ -23,7 +22,6 @@ object Routes {
     const val INVOICE_DETAIL = "invoice/{id}"
     const val SETTINGS = "settings"
     const val PRINTER = "printer"
-    const val PRINT_IMAGE = "print-image"
 
     fun invoiceDetail(id: Long) = "invoice/$id"
 }
@@ -39,8 +37,7 @@ fun NotaApp() {
                     onCreatePlnToken = { navController.navigate(Routes.NEW_PLN_TOKEN) },
                     onOpenInvoice = { id -> navController.navigate(Routes.invoiceDetail(id)) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                    onOpenPrinter = { navController.navigate(Routes.PRINTER) },
-                    onOpenPrintImage = { navController.navigate(Routes.PRINT_IMAGE) }
+                    onOpenPrinter = { navController.navigate(Routes.PRINTER) }
                 )
             }
             composable(Routes.NEW_INVOICE) {
@@ -74,12 +71,6 @@ fun NotaApp() {
             }
             composable(Routes.PRINTER) {
                 PrinterScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.PRINT_IMAGE) {
-                PrintImageScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenPrinter = { navController.navigate(Routes.PRINTER) }
-                )
             }
         }
     }

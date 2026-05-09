@@ -7,13 +7,11 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
-import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import com.notathermal.app.domain.PaperWidth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -102,48 +100,8 @@ class BluetoothPrinterService(private val context: Context) {
         }
     }
 
-    suspend fun printImage(
-        address: String,
-        bitmap: Bitmap,
-        paperWidth: PaperWidth,
-        copies: Int = 1,
-        cutPaper: Boolean = true,
-        mmFeedBeforeCut: Int = 10
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            val connection = findConnection(address) ?: error("Printer tidak ditemukan / belum dipair")
-            val printer = createPrinter(connection, paperWidth)
-            // The library reads bitmaps in horizontal slices of 256px tall.
-            // Resizing wide images to printer width keeps the print sharp and
-            // avoids rendering artifacts from auto-scaling.
-            val targetWidth = printer.printerWidthPx.coerceAtLeast(1)
-            val scaled = scaleToWidth(bitmap, targetWidth)
-            val hex = PrinterTextParserImg.bitmapToHexadecimalString(printer, scaled)
-            val text = "[C]<img>$hex</img>\n[L]\n"
-            val feed = mmFeedBeforeCut.coerceIn(0, 30).toFloat()
-            repeat(copies.coerceAtLeast(1)) {
-                if (cutPaper) printer.printFormattedTextAndCut(text, feed) else printer.printFormattedText(text, feed)
-            }
-            printer.disconnectPrinter()
-            if (scaled !== bitmap) scaled.recycle()
-            Unit
-        }
-    }
-
-    private fun scaleToWidth(bitmap: Bitmap, targetWidth: Int): Bitmap {
-        if (bitmap.width == targetWidth) return bitmap
-        val ratio = targetWidth.toFloat() / bitmap.width.toFloat()
-        val targetHeight = (bitmap.height * ratio).toInt().coerceAtLeast(1)
-        return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
-    }
-
     private fun createPrinter(connection: BluetoothConnection, paperWidth: PaperWidth): EscPosPrinter {
-        // The library expects the *printable* width (not the paper width) so
-        // that `printerWidthPx` matches the actual print-head dot count.
-        // Using the raw paper width here makes images render narrower than
-        // the printable area, which is what produced the "image too small"
-        // bug in earlier versions.
-        val widthMm = paperWidth.printableWidthMm
+        val widthMm = paperWidth.mm
         val charsPerLine = paperWidth.charsNormal
         return EscPosPrinter(connection, 203, widthMm, charsPerLine)
     }
