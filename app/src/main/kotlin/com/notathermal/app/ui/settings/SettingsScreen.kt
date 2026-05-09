@@ -121,6 +121,8 @@ private fun SettingsForm(
     var copies by rememberSaveable { mutableStateOf(initial.copies.toString()) }
     var taxPercent by rememberSaveable { mutableStateOf(initial.taxPercentDefault.toString()) }
 
+    val scrollState = rememberScrollState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -133,9 +135,9 @@ private fun SettingsForm(
             )
         }
     ) { padding ->
-        // Use a regular vertical-scroll Column for a fixed-size form: avoids
-        // LazyColumn's per-item compose/measure overhead which causes visible
-        // jank when scrolling past unmeasured TextField items.
+        // Plain vertical-scroll Column for a fixed-size form: avoids LazyColumn's
+        // per-item compose/measure overhead which causes visible jank when
+        // scrolling past unmeasured TextField items.
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -181,35 +183,15 @@ private fun SettingsForm(
                 minLines = 2
             )
 
-            item { Section("Cetak") }
-            item {
-                Column {
-                    Text("Ukuran kertas", style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PaperWidth.values().forEach { p ->
-                            FilterChip(
-                                selected = paperWidth == p,
-                                onClick = { paperWidth = p },
-                                label = { Text("${p.mm.toInt()}mm") }
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                Column {
-                    Text("Alignment header / footer", style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextAlign.values().forEach { a ->
-                            FilterChip(
-                                selected = titleAlign == a,
-                                onClick = { titleAlign = a },
-                                label = { Text(a.name) }
-                            )
-                        }
-                    }
+            Section("Cetak")
+            Text("Ukuran kertas", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PAPER_WIDTHS.forEach { p ->
+                    FilterChip(
+                        selected = paperWidth == p,
+                        onClick = { paperWidth = p },
+                        label = { Text("${p.mm.toInt()}mm") }
+                    )
                 }
             }
             Text("Alignment header / footer", style = MaterialTheme.typography.labelLarge)
@@ -239,38 +221,44 @@ private fun SettingsForm(
                     singleLine = true
                 )
             }
-            item { ToggleRow("Auto cut kertas", cutPaper) { cutPaper = it } }
-            item { ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it } }
-            item { ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it } }
+            OutlinedTextField(
+                value = taxPercent,
+                onValueChange = { taxPercent = it.replace(',', '.').filter { c -> c.isDigit() || c == '.' } },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Pajak default (%)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
+            )
+            ToggleRow("Auto cut kertas", cutPaper) { cutPaper = it }
+            ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it }
+            ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it }
 
-            item {
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = {
-                        onSave(
-                            storeName,
-                            storeAddress,
-                            storePhone,
-                            headerText,
-                            footerText,
-                            paperWidth,
-                            titleAlign,
-                            currency.ifBlank { "Rp" },
-                            showCashier,
-                            showCustomer,
-                            cutPaper,
-                            copies.toIntOrNull()?.coerceAtLeast(1) ?: 1,
-                            taxPercent.toDoubleOrNull() ?: 0.0,
-                            onBack
-                        )
-                    },
-                    enabled = !saving,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (saving) "Menyimpan…" else "Simpan")
-                }
-                Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    onSave(
+                        storeName,
+                        storeAddress,
+                        storePhone,
+                        headerText,
+                        footerText,
+                        paperWidth,
+                        titleAlign,
+                        currency.ifBlank { "Rp" },
+                        showCashier,
+                        showCustomer,
+                        cutPaper,
+                        copies.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                        taxPercent.toDoubleOrNull() ?: 0.0,
+                        onBack
+                    )
+                },
+                enabled = !saving,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (saving) "Menyimpan…" else "Simpan")
             }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
