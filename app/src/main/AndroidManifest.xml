@@ -15,6 +15,14 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="30" />
 
+    <!-- Required by AI feature: Gemini API + speech-to-text intent resolution -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <uses-feature
         android:name="android.hardware.bluetooth"
         android:required="false" />
