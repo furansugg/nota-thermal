@@ -20,8 +20,15 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PeopleAlt
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -48,6 +55,7 @@ import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.domain.PaperWidth
 import com.notathermal.app.domain.TextAlign
 import com.notathermal.app.ui.common.appViewModel
+import com.notathermal.app.ui.components.SectionHeader as SharedSectionHeader
 
 private val PAPER_WIDTHS: List<PaperWidth> = PaperWidth.values().toList()
 private val TEXT_ALIGNS: List<TextAlign> = TextAlign.values().toList()
@@ -164,7 +172,7 @@ private fun SettingsForm(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Section("Data Toko")
+            SharedSectionHeader("Data Toko", icon = Icons.Default.Storefront)
             OutlinedTextField(
                 value = storeName,
                 onValueChange = { storeName = it },
@@ -201,7 +209,7 @@ private fun SettingsForm(
                 minLines = 2
             )
 
-            Section("Cetak")
+            SharedSectionHeader("Cetak", icon = Icons.Default.Print)
             Text("Ukuran kertas", style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PAPER_WIDTHS.forEach { p ->
@@ -251,53 +259,21 @@ private fun SettingsForm(
             ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it }
             ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it }
 
-            Section("Token PLN")
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onOpenPlnProducts)
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Inventory2, contentDescription = null)
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Kelola produk PLN", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Atur daftar produk (nama + nominal) untuk dipilih cepat di form Token PLN.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onOpenPlnCustomers)
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.PeopleAlt, contentDescription = null)
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Kelola pelanggan PLN", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Lihat & hapus daftar pelanggan yang tersimpan otomatis dari invoice Token PLN.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null
-                )
-            }
+            SharedSectionHeader("Token PLN", icon = Icons.Default.ElectricBolt)
+            NavCard(
+                icon = Icons.Default.Inventory2,
+                title = "Kelola produk PLN",
+                subtitle = "Atur daftar produk (nama + nominal) untuk dipilih cepat di form Token PLN.",
+                onClick = onOpenPlnProducts
+            )
+            NavCard(
+                icon = Icons.Default.PeopleAlt,
+                title = "Kelola pelanggan PLN",
+                subtitle = "Lihat & hapus daftar pelanggan yang tersimpan otomatis dari invoice Token PLN.",
+                onClick = onOpenPlnCustomers
+            )
 
-            Section("AI (Gemini)")
+            SharedSectionHeader("AI (Gemini)", icon = Icons.Default.AutoAwesome)
             Text(
                 "Diperlukan untuk fitur \"Isi otomatis dengan AI\" di form invoice. " +
                     "Kunci tidak dikirim ke siapapun selain Google. Tier gratis: ~60 request/menit.",
@@ -343,31 +319,85 @@ private fun SettingsForm(
                     )
                 },
                 enabled = !saving,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = MaterialTheme.shapes.large,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(if (saving) "Menyimpan…" else "Simpan")
+                Icon(Icons.Default.Save, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (saving) "Menyimpan…" else "Simpan",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
             Spacer(Modifier.height(24.dp))
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Section(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold
-    )
+private fun NavCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            com.notathermal.app.ui.components.LeadingBadge(icon = icon, sizeDp = 40)
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
-        Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                label,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Switch(checked = checked, onCheckedChange = onChange)
+        }
     }
 }
