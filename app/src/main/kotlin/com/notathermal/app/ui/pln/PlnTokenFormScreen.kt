@@ -1,6 +1,8 @@
 package com.notathermal.app.ui.pln
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,31 +13,42 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.notathermal.app.data.db.PaymentMethod
+import com.notathermal.app.data.db.PlnCustomerEntity
 import com.notathermal.app.ui.common.appViewModel
 import com.notathermal.app.util.Format
 
@@ -48,12 +61,18 @@ fun PlnTokenFormScreen(
     onSaved: (Long) -> Unit
 ) {
     val viewModel = appViewModel { container ->
-        PlnTokenFormViewModel(container.invoiceRepository, container.settingsRepository)
+        PlnTokenFormViewModel(
+            container.invoiceRepository,
+            container.settingsRepository,
+            container.plnCustomerRepository
+        )
     }
     val holder = viewModel.holder
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val savedCustomers by viewModel.savedCustomers.collectAsStateWithLifecycle()
     val currency = settings.currencySymbol
     val onSave = remember(viewModel, onSaved) { { viewModel.save(onSaved) } }
+    var showCustomerPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -72,18 +91,51 @@ fun PlnTokenFormScreen(
             )
         }
     ) { padding ->
+        if (showCustomerPicker) {
+            PlnCustomerPickerSheet(
+                customers = savedCustomers,
+                onPick = { customer ->
+                    holder.applyCustomer(customer)
+                    showCustomerPicker = false
+                },
+                onDismiss = { showCustomerPicker = false }
+            )
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item { Header("Produk") }
+            item {
+                OutlinedTextField(
+                    value = holder.productName,
+                    onValueChange = { holder.productName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Nama produk") },
+                    placeholder = { Text("Token Listrik PLN") },
+                    singleLine = true
+                )
+            }
             item { Header("Data Pelanggan & Meter") }
+            if (savedCustomers.isNotEmpty()) {
+                item {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { showCustomerPicker = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.PersonSearch, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Pilih dari pelanggan tersimpan (${savedCustomers.size})")
+                    }
+                }
+            }
             item {
                 OutlinedTextField(
                     value = holder.customerName,
                     onValueChange = { holder.customerName = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Nama pelanggan (opsional)") },
+                    label = { Text("Nama pelanggan") },
                     singleLine = true
                 )
             }
@@ -216,6 +268,83 @@ private fun sanitizeNumber(v: String): String {
 @Composable
 private fun Header(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlnCustomerPickerSheet(
+    customers: List<PlnCustomerEntity>,
+    onPick: (PlnCustomerEntity) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(customers, query) {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) customers
+        else customers.filter {
+            it.customerName.lowercase().contains(q) || it.meterNo.contains(q)
+        }
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        ) {
+            Text(
+                "Pelanggan PLN tersimpan",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Cari nama atau no. meter") },
+                singleLine = true
+            )
+            Spacer(Modifier.height(8.dp))
+            if (filtered.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Tidak ada data cocok",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+                    items(filtered, key = { it.id }) { c ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(c) }
+                                .padding(vertical = 12.dp)
+                        ) {
+                            Text(
+                                c.customerName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "No. Meter: ${c.meterNo}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
 }
 
 @Composable

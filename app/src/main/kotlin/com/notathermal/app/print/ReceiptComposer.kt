@@ -153,6 +153,9 @@ class ReceiptComposer {
         }
         sb.appendLine("Meter: ${invoice.meterNo.orEmpty()}")
         invoice.kwh?.let { sb.appendLine("kWh  : ${formatQty(it)} kWh") }
+        input.items.firstOrNull()?.name?.takeIf { it.isNotBlank() }?.let {
+            sb.appendLine("Produk: $it")
+        }
         sb.appendLine("-".repeat(w))
         sb.appendLine(alignText("NOMOR TOKEN / STROOM", w, TextAlign.CENTER))
         formatTokenForDisplay(invoice.tokenNumber.orEmpty()).forEach { line ->
@@ -193,6 +196,9 @@ class ReceiptComposer {
         sb.append("[L]Meter: ").append(escape(invoice.meterNo.orEmpty())).append('\n')
         invoice.kwh?.let {
             sb.append("[L]kWh  : ").append(formatQty(it)).append(" kWh\n")
+        }
+        input.items.firstOrNull()?.name?.takeIf { it.isNotBlank() }?.let {
+            sb.append("[L]Produk: ").append(escape(it)).append('\n')
         }
         sb.append("[L]").append("-".repeat(w)).append('\n')
         sb.append("[C]NOMOR TOKEN / STROOM\n")

@@ -69,6 +69,7 @@ class InvoiceRepository(private val dao: InvoiceDao) {
     suspend fun createPlnTokenInvoice(
         meterNo: String,
         customerName: String?,
+        productName: String?,
         kwh: Double,
         tokenNumber: String,
         nominal: Double,
@@ -102,9 +103,12 @@ class InvoiceRepository(private val dao: InvoiceDao) {
             tokenNumber = tokenNumber,
             createdAt = now
         )
+        // Item.name doubles as the printed line-item label on the receipt — using
+        // the user-supplied product name lets one shop sell different PLN packages
+        // (e.g. "Token Listrik 100k", "Token Listrik 50k") without changing code.
         val item = InvoiceItemEntity(
             invoiceId = 0,
-            name = "Token Listrik PLN",
+            name = productName?.trim()?.takeIf { it.isNotBlank() } ?: "Token Listrik PLN",
             quantity = 1.0,
             price = nominal,
             discount = 0.0,
