@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -47,6 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -117,124 +117,122 @@ fun InvoiceFormScreen(
                 }
             )
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
+        // Plain vertical-scroll Column for a fixed-shape form: avoids LazyColumn's
+        // per-item compose/measure overhead which causes visible jank when
+        // scrolling past unmeasured TextField items. Items list still reacts to
+        // add/remove because Compose snapshot state (mutableStateListOf) is
+        // observed directly.
+        val scrollState = rememberScrollState()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(scrollState)
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { SharedSectionHeader("Daftar Item", icon = Icons.Default.Inventory2) }
-            items(holder.items, key = { it.id }) { itemHolder ->
-                ItemCard(
-                    itemHolder = itemHolder,
-                    currency = currency,
-                    canRemove = holder.items.size > 1,
-                    onRemove = { holder.removeItem(itemHolder.id) }
-                )
-            }
-            item {
-                OutlinedButton(
-                    onClick = { holder.addItem() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Tambah Item")
-                }
-            }
-            item { SharedSectionHeader("Pelanggan & Catatan", icon = Icons.Default.Person) }
-            item {
-                OutlinedTextField(
-                    value = holder.customerName,
-                    onValueChange = { holder.customerName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Nama pelanggan (opsional)") },
-                    singleLine = true
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = holder.cashierName,
-                    onValueChange = { holder.cashierName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Nama kasir (opsional)") },
-                    singleLine = true
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = holder.note,
-                    onValueChange = { holder.note = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Catatan (opsional)") },
-                    minLines = 2
-                )
-            }
-            item { SharedSectionHeader("Diskon, Pajak, Pembayaran", icon = Icons.Default.Payments) }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = holder.discount,
-                        onValueChange = { holder.discount = sanitizeNumber(it) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Diskon ($currency)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = holder.taxPercent,
-                        onValueChange = { holder.taxPercent = sanitizeNumber(it) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Pajak (%)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
+            SharedSectionHeader("Daftar Item", icon = Icons.Default.Inventory2)
+            val canRemove = holder.items.size > 1
+            holder.items.forEach { itemHolder ->
+                key(itemHolder.id) {
+                    ItemCard(
+                        itemHolder = itemHolder,
+                        currency = currency,
+                        canRemove = canRemove,
+                        onRemove = { holder.removeItem(itemHolder.id) }
                     )
                 }
             }
-            item {
-                PaymentMethodPicker(
-                    selected = holder.paymentMethod,
-                    onSelect = { holder.paymentMethod = it }
+            OutlinedButton(
+                onClick = { holder.addItem() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Tambah Item")
+            }
+
+            SharedSectionHeader("Pelanggan & Catatan", icon = Icons.Default.Person)
+            OutlinedTextField(
+                value = holder.customerName,
+                onValueChange = { holder.customerName = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Nama pelanggan (opsional)") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = holder.cashierName,
+                onValueChange = { holder.cashierName = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Nama kasir (opsional)") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = holder.note,
+                onValueChange = { holder.note = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Catatan (opsional)") },
+                minLines = 2
+            )
+
+            SharedSectionHeader("Diskon, Pajak, Pembayaran", icon = Icons.Default.Payments)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = holder.discount,
+                    onValueChange = { holder.discount = sanitizeNumber(it) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Diskon ($currency)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = holder.taxPercent,
+                    onValueChange = { holder.taxPercent = sanitizeNumber(it) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Pajak (%)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
                 )
             }
+            PaymentMethodPicker(
+                selected = holder.paymentMethod,
+                onSelect = { holder.paymentMethod = it }
+            )
             if (holder.paymentMethod == PaymentMethod.TUNAI) {
-                item {
-                    OutlinedTextField(
-                        value = holder.paymentReceived,
-                        onValueChange = { holder.paymentReceived = sanitizeNumber(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Diterima ($currency)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
-                    )
-                }
+                OutlinedTextField(
+                    value = holder.paymentReceived,
+                    onValueChange = { holder.paymentReceived = sanitizeNumber(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Diterima ($currency)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
             }
-            item { TotalsCard(holder, currency) }
+            TotalsCard(holder, currency)
             holder.error?.let { msg ->
-                item { Text(msg, color = MaterialTheme.colorScheme.error) }
+                Text(msg, color = MaterialTheme.colorScheme.error)
             }
-            item {
-                Button(
-                    onClick = onSave,
-                    enabled = holder.canSave,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = MaterialTheme.shapes.large,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Icon(Icons.Default.Save, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (holder.saving) "Menyimpan…" else "Simpan & Lihat",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+            Button(
+                onClick = onSave,
+                enabled = holder.canSave,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = MaterialTheme.shapes.large,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Icon(Icons.Default.Save, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (holder.saving) "Menyimpan…" else "Simpan & Lihat",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
-            item { Spacer(Modifier.height(24.dp)) }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
