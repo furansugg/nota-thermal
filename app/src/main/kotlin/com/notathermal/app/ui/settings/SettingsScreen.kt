@@ -16,7 +16,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.PeopleAlt
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,7 +53,10 @@ private val TEXT_ALIGNS: List<TextAlign> = TextAlign.values().toList()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onOpenPlnCustomers: () -> Unit = {}
+) {
     val viewModel = appViewModel { container -> SettingsViewModel(container.settingsRepository) }
     val loaded by viewModel.settings.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
@@ -83,6 +89,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         initial = current,
         saving = saving,
         onBack = onBack,
+        onOpenPlnCustomers = onOpenPlnCustomers,
         onSave = viewModel::save
     )
 }
@@ -93,6 +100,7 @@ private fun SettingsForm(
     initial: AppSettings,
     saving: Boolean,
     onBack: () -> Unit,
+    onOpenPlnCustomers: () -> Unit,
     onSave: (
         storeName: String,
         storeAddress: String,
@@ -238,6 +246,30 @@ private fun SettingsForm(
             ToggleRow("Auto cut kertas", cutPaper) { cutPaper = it }
             ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it }
             ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it }
+
+            Section("Pelanggan PLN")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenPlnCustomers)
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.PeopleAlt, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Kelola pelanggan PLN", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Lihat & hapus daftar pelanggan yang tersimpan otomatis dari invoice Token PLN.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null
+                )
+            }
 
             Section("AI (Gemini)")
             Text(

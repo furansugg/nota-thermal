@@ -8,9 +8,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notathermal.app.data.db.PaymentMethod
+import com.notathermal.app.data.db.PlnCustomerEntity
 import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.data.prefs.SettingsRepository
 import com.notathermal.app.data.repo.InvoiceRepository
+import com.notathermal.app.data.repo.PlnCustomerRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -22,6 +24,7 @@ import kotlinx.coroutines.launch
  */
 @Stable
 class PlnFormStateHolder {
+    var productName by mutableStateOf("Token Listrik PLN")
     var customerName by mutableStateOf("")
     var meterNo by mutableStateOf("")
     var kwh by mutableStateOf("")
@@ -53,11 +56,17 @@ class PlnFormStateHolder {
             nominalValue > 0
     }
     val canSave: Boolean get() = canSaveState.value
+
+    fun applyCustomer(customer: PlnCustomerEntity) {
+        customerName = customer.customerName
+        meterNo = customer.meterNo
+    }
 }
 
 class PlnTokenFormViewModel(
     private val invoiceRepository: InvoiceRepository,
-    settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository,
+    private val plnCustomerRepository: PlnCustomerRepository
 ) : ViewModel() {
 
     val holder = PlnFormStateHolder()
@@ -65,15 +74,21 @@ class PlnTokenFormViewModel(
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings.Default)
 
+    val savedCustomers: StateFlow<List<PlnCustomerEntity>> = plnCustomerRepository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     fun save(onSaved: (Long) -> Unit) {
         if (!holder.canSave) return
         holder.saving = true
         holder.error = null
         viewModelScope.launch {
             try {
+                val cleanedMeter = holder.meterNo.trim()
+                val cleanedCustomer = holder.customerName.trim()
                 val id = invoiceRepository.createPlnTokenInvoice(
-                    meterNo = holder.meterNo.trim(),
-                    customerName = holder.customerName.trim(),
+                    meterNo = cleanedMeter,
+                    customerName = cleanedCustomer,
+                    productName = holder.productName.trim(),
                     kwh = holder.kwhValue,
                     tokenNumber = holder.tokenDigits,
                     nominal = holder.nominalValue,
@@ -82,6 +97,10 @@ class PlnTokenFormViewModel(
                     paymentReceived = holder.paymentReceivedValue,
                     note = holder.note.trim()
                 )
+                // Remember customer for autofill on future PLN invoices. Skipped
+                // silently if either field is blank (rememberCustomer enforces
+                // that), so this never persists junk rows.
+                plnCustomerRepository.rememberCustomer(cleanedMeter, cleanedCustomer)
                 holder.saving = false
                 onSaved(id)
             } catch (t: Throwable) {
