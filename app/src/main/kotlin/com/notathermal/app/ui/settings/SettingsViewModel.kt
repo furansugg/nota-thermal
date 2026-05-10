@@ -44,6 +44,7 @@ class SettingsViewModel(
         cutPaper: Boolean,
         copies: Int,
         taxPercentDefault: Double,
+        geminiApiKey: String,
         onDone: () -> Unit
     ) {
         viewModelScope.launch {
@@ -62,7 +63,8 @@ class SettingsViewModel(
                     showCustomer = showCustomer,
                     cutPaper = cutPaper,
                     copies = copies,
-                    taxPercentDefault = taxPercentDefault
+                    taxPercentDefault = taxPercentDefault,
+                    geminiApiKey = geminiApiKey.trim()
                 )
             }
             _saving.update { false }

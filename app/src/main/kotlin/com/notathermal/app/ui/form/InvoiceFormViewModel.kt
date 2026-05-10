@@ -9,6 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.notathermal.app.ai.AiInvoiceParser
+import com.notathermal.app.ai.ParsedInvoice
 import com.notathermal.app.data.db.InvoiceItemEntity
 import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.data.prefs.AppSettings
@@ -85,7 +87,8 @@ class InvoiceFormStateHolder {
 
 class InvoiceFormViewModel(
     private val invoiceRepository: InvoiceRepository,
-    settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository,
+    private val aiInvoiceParser: AiInvoiceParser
 ) : ViewModel() {
 
     val holder = InvoiceFormStateHolder()
@@ -102,6 +105,55 @@ class InvoiceFormViewModel(
             }
         }
     }
+
+    /**
+     * Calls Gemini to parse [userText] and merges the result into the form
+     * state. Existing items are replaced if the AI returns at least one item;
+     * customer / cashier / tax are only filled when blank, so an AI run never
+     * silently overwrites something the user already typed.
+     */
+    fun applyAi(
+        apiKey: String,
+        userText: String,
+        onResult: (Result<ParsedInvoice>) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = aiInvoiceParser.parse(apiKey, userText)
+            result.onSuccess { parsed -> mergeFromAi(parsed) }
+            onResult(result)
+        }
+    }
+
+    private fun mergeFromAi(parsed: ParsedInvoice) {
+        if (parsed.items.isNotEmpty()) {
+            holder.items.clear()
+            parsed.items.forEach { p ->
+                holder.items += ItemDraftHolder().also {
+                    it.name = p.name
+                    it.quantity = formatNumber(p.quantity, integerIfWhole = true)
+                    it.price = formatNumber(p.price, integerIfWhole = true)
+                    it.discount = if (p.discount > 0) formatNumber(p.discount, integerIfWhole = true) else ""
+                }
+            }
+            if (holder.items.isEmpty()) holder.items += ItemDraftHolder()
+        }
+        if (holder.customerName.isBlank() && !parsed.customerName.isNullOrBlank()) {
+            holder.customerName = parsed.customerName
+        }
+        if (holder.cashierName.isBlank() && !parsed.cashierName.isNullOrBlank()) {
+            holder.cashierName = parsed.cashierName
+        }
+        if (holder.taxPercent.isBlank() && parsed.taxPercent != null && parsed.taxPercent > 0) {
+            holder.taxPercent = formatNumber(parsed.taxPercent, integerIfWhole = false)
+        }
+        if (holder.note.isBlank() && !parsed.notes.isNullOrBlank()) {
+            holder.note = parsed.notes
+        }
+    }
+
+    private fun formatNumber(value: Double, integerIfWhole: Boolean): String =
+        if (integerIfWhole && value % 1.0 == 0.0) value.toLong().toString()
+        else value.toString().trimEnd('0').trimEnd('.')
 
     fun save(onSaved: (Long) -> Unit) {
         if (!holder.canSave) return

@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -104,6 +107,7 @@ private fun SettingsForm(
         cutPaper: Boolean,
         copies: Int,
         taxPercentDefault: Double,
+        geminiApiKey: String,
         onDone: () -> Unit
     ) -> Unit
 ) {
@@ -120,6 +124,8 @@ private fun SettingsForm(
     var cutPaper by rememberSaveable { mutableStateOf(initial.cutPaper) }
     var copies by rememberSaveable { mutableStateOf(initial.copies.toString()) }
     var taxPercent by rememberSaveable { mutableStateOf(initial.taxPercentDefault.toString()) }
+    var geminiApiKey by rememberSaveable { mutableStateOf(initial.geminiApiKey) }
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
 
     val scrollState = rememberScrollState()
 
@@ -233,6 +239,30 @@ private fun SettingsForm(
             ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it }
             ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it }
 
+            Section("AI (Gemini)")
+            Text(
+                "Diperlukan untuk fitur \"Isi otomatis dengan AI\" di form invoice. " +
+                    "Kunci tidak dikirim ke siapapun selain Google. Tier gratis: ~60 request/menit.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = geminiApiKey,
+                onValueChange = { geminiApiKey = it.trim() },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Kunci API Gemini") },
+                placeholder = { Text("AIza...") },
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) }
+            )
+            androidx.compose.material3.TextButton(
+                onClick = { uriHandler.openUri("https://aistudio.google.com/apikey") }
+            ) {
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Dapatkan API key gratis")
+            }
+
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
@@ -250,6 +280,7 @@ private fun SettingsForm(
                         cutPaper,
                         copies.toIntOrNull()?.coerceAtLeast(1) ?: 1,
                         taxPercent.toDoubleOrNull() ?: 0.0,
+                        geminiApiKey,
                         onBack
                     )
                 },

@@ -29,7 +29,8 @@ data class AppSettings(
     val copies: Int,
     val taxPercentDefault: Double,
     val printerAddress: String?,
-    val printerName: String?
+    val printerName: String?,
+    val geminiApiKey: String
 ) {
     companion object {
         val Default = AppSettings(
@@ -47,7 +48,8 @@ data class AppSettings(
             copies = 1,
             taxPercentDefault = 0.0,
             printerAddress = null,
-            printerName = null
+            printerName = null,
+            geminiApiKey = ""
         )
     }
 }
@@ -70,6 +72,7 @@ class SettingsRepository(private val context: Context) {
         val TAX_PERCENT = stringPreferencesKey("tax_percent_default")
         val PRINTER_ADDR = stringPreferencesKey("printer_address")
         val PRINTER_NAME = stringPreferencesKey("printer_name")
+        val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
@@ -93,6 +96,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.TAX_PERCENT] = next.taxPercentDefault.toString()
             next.printerAddress?.let { prefs[Keys.PRINTER_ADDR] = it } ?: prefs.remove(Keys.PRINTER_ADDR)
             next.printerName?.let { prefs[Keys.PRINTER_NAME] = it } ?: prefs.remove(Keys.PRINTER_NAME)
+            if (next.geminiApiKey.isBlank()) prefs.remove(Keys.GEMINI_API_KEY) else prefs[Keys.GEMINI_API_KEY] = next.geminiApiKey
         }
     }
 
@@ -125,7 +129,8 @@ class SettingsRepository(private val context: Context) {
             copies = this[Keys.COPIES] ?: d.copies,
             taxPercentDefault = this[Keys.TAX_PERCENT]?.toDoubleOrNull() ?: d.taxPercentDefault,
             printerAddress = this[Keys.PRINTER_ADDR],
-            printerName = this[Keys.PRINTER_NAME]
+            printerName = this[Keys.PRINTER_NAME],
+            geminiApiKey = this[Keys.GEMINI_API_KEY] ?: d.geminiApiKey
         )
     }
 }
