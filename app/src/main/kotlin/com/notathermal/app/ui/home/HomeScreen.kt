@@ -152,10 +152,14 @@ fun HomeScreen(
                     )
                 }
                 items(invoices, key = { it.id }) { invoice ->
+                    val invoiceId = invoice.id
+                    val onClickItem = remember(invoiceId, onOpenInvoice) {
+                        { onOpenInvoice(invoiceId) }
+                    }
                     InvoiceCard(
                         invoice = invoice,
                         currency = settings.currencySymbol,
-                        onClick = { onOpenInvoice(invoice.id) },
+                        onClick = onClickItem,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
