@@ -9,10 +9,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.data.db.PlnCustomerEntity
+import com.notathermal.app.data.db.PlnProductEntity
 import com.notathermal.app.data.prefs.AppSettings
 import com.notathermal.app.data.prefs.SettingsRepository
 import com.notathermal.app.data.repo.InvoiceRepository
 import com.notathermal.app.data.repo.PlnCustomerRepository
+import com.notathermal.app.data.repo.PlnProductRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -30,7 +32,7 @@ class PlnFormStateHolder {
     var kwh by mutableStateOf("")
     var tokenNumber by mutableStateOf("")
     var nominal by mutableStateOf("")
-    var adminFee by mutableStateOf("2500")
+    var adminFee by mutableStateOf("0")
     var paymentMethod by mutableStateOf(PaymentMethod.TUNAI)
     var paymentReceived by mutableStateOf("")
     var note by mutableStateOf("")
@@ -61,12 +63,19 @@ class PlnFormStateHolder {
         customerName = customer.customerName
         meterNo = customer.meterNo
     }
+
+    fun applyProduct(product: PlnProductEntity) {
+        productName = product.name
+        nominal = if (product.nominal % 1.0 == 0.0) product.nominal.toLong().toString()
+        else product.nominal.toString()
+    }
 }
 
 class PlnTokenFormViewModel(
     private val invoiceRepository: InvoiceRepository,
     settingsRepository: SettingsRepository,
-    private val plnCustomerRepository: PlnCustomerRepository
+    private val plnCustomerRepository: PlnCustomerRepository,
+    plnProductRepository: PlnProductRepository
 ) : ViewModel() {
 
     val holder = PlnFormStateHolder()
@@ -75,6 +84,9 @@ class PlnTokenFormViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings.Default)
 
     val savedCustomers: StateFlow<List<PlnCustomerEntity>> = plnCustomerRepository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val products: StateFlow<List<PlnProductEntity>> = plnProductRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun save(onSaved: (Long) -> Unit) {

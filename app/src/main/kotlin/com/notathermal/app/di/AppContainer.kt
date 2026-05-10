@@ -6,6 +6,7 @@ import com.notathermal.app.data.db.AppDatabase
 import com.notathermal.app.data.prefs.SettingsRepository
 import com.notathermal.app.data.repo.InvoiceRepository
 import com.notathermal.app.data.repo.PlnCustomerRepository
+import com.notathermal.app.data.repo.PlnProductRepository
 import com.notathermal.app.ai.AiInvoiceParser
 import com.notathermal.app.print.BluetoothPrinterService
 import com.notathermal.app.print.ReceiptComposer
@@ -19,12 +20,13 @@ class AppContainer(context: Context) {
         AppDatabase::class.java,
         "nota-thermal.db"
     )
-        .addMigrations(AppDatabase.MIGRATION_2_3)
+        .addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
         .fallbackToDestructiveMigration()
         .build()
 
     val invoiceRepository: InvoiceRepository = InvoiceRepository(db.invoiceDao())
     val plnCustomerRepository: PlnCustomerRepository = PlnCustomerRepository(db.plnCustomerDao())
+    val plnProductRepository: PlnProductRepository = PlnProductRepository(db.plnProductDao())
     val settingsRepository: SettingsRepository = SettingsRepository(appContext)
     val bluetoothPrinterService: BluetoothPrinterService = BluetoothPrinterService(appContext)
     val receiptComposer: ReceiptComposer = ReceiptComposer()

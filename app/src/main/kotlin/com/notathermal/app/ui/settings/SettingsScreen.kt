@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PeopleAlt
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
@@ -55,7 +56,8 @@ private val TEXT_ALIGNS: List<TextAlign> = TextAlign.values().toList()
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onOpenPlnCustomers: () -> Unit = {}
+    onOpenPlnCustomers: () -> Unit = {},
+    onOpenPlnProducts: () -> Unit = {}
 ) {
     val viewModel = appViewModel { container -> SettingsViewModel(container.settingsRepository) }
     val loaded by viewModel.settings.collectAsStateWithLifecycle()
@@ -90,6 +92,7 @@ fun SettingsScreen(
         saving = saving,
         onBack = onBack,
         onOpenPlnCustomers = onOpenPlnCustomers,
+        onOpenPlnProducts = onOpenPlnProducts,
         onSave = viewModel::save
     )
 }
@@ -101,6 +104,7 @@ private fun SettingsForm(
     saving: Boolean,
     onBack: () -> Unit,
     onOpenPlnCustomers: () -> Unit,
+    onOpenPlnProducts: () -> Unit,
     onSave: (
         storeName: String,
         storeAddress: String,
@@ -247,7 +251,29 @@ private fun SettingsForm(
             ToggleRow("Tampilkan nama kasir di struk", showCashier) { showCashier = it }
             ToggleRow("Tampilkan nama pelanggan di struk", showCustomer) { showCustomer = it }
 
-            Section("Pelanggan PLN")
+            Section("Token PLN")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenPlnProducts)
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Inventory2, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Kelola produk PLN", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Atur daftar produk (nama + nominal) untuk dipilih cepat di form Token PLN.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null
+                )
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
