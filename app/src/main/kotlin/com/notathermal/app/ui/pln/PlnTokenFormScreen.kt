@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.data.db.PlnCustomerEntity
+import com.notathermal.app.data.db.PlnProductEntity
 import com.notathermal.app.ui.common.appViewModel
 import com.notathermal.app.util.Format
 
@@ -64,15 +66,18 @@ fun PlnTokenFormScreen(
         PlnTokenFormViewModel(
             container.invoiceRepository,
             container.settingsRepository,
-            container.plnCustomerRepository
+            container.plnCustomerRepository,
+            container.plnProductRepository
         )
     }
     val holder = viewModel.holder
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val savedCustomers by viewModel.savedCustomers.collectAsStateWithLifecycle()
+    val products by viewModel.products.collectAsStateWithLifecycle()
     val currency = settings.currencySymbol
     val onSave = remember(viewModel, onSaved) { { viewModel.save(onSaved) } }
     var showCustomerPicker by remember { mutableStateOf(false) }
+    var showProductPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -101,12 +106,35 @@ fun PlnTokenFormScreen(
                 onDismiss = { showCustomerPicker = false }
             )
         }
+        if (showProductPicker) {
+            PlnProductPickerSheet(
+                products = products,
+                currency = currency,
+                onPick = { product ->
+                    holder.applyProduct(product)
+                    showProductPicker = false
+                },
+                onDismiss = { showProductPicker = false }
+            )
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { Header("Produk") }
+            if (products.isNotEmpty()) {
+                item {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { showProductPicker = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Inventory2, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Pilih produk PLN (${products.size})")
+                    }
+                }
+            }
             item {
                 OutlinedTextField(
                     value = holder.productName,
@@ -268,6 +296,63 @@ private fun sanitizeNumber(v: String): String {
 @Composable
 private fun Header(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlnProductPickerSheet(
+    products: List<PlnProductEntity>,
+    currency: String,
+    onPick: (PlnProductEntity) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Text(
+                "Pilih produk PLN",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            if (products.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Belum ada produk. Tambahkan dari Pengaturan → Kelola produk PLN.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+                    items(products, key = { it.id }) { p ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(p) }
+                                .padding(vertical = 12.dp)
+                        ) {
+                            Text(
+                                p.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "$currency ${Format.number(p.nominal)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

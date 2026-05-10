@@ -12,6 +12,7 @@ import com.notathermal.app.ui.detail.InvoiceDetailScreen
 import com.notathermal.app.ui.form.InvoiceFormScreen
 import com.notathermal.app.ui.home.HomeScreen
 import com.notathermal.app.ui.pln.PlnCustomersScreen
+import com.notathermal.app.ui.pln.PlnProductsScreen
 import com.notathermal.app.ui.pln.PlnTokenFormScreen
 import com.notathermal.app.ui.printer.PrinterScreen
 import com.notathermal.app.ui.settings.SettingsScreen
@@ -24,6 +25,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val PRINTER = "printer"
     const val PLN_CUSTOMERS = "pln/customers"
+    const val PLN_PRODUCTS = "pln/products"
 
     fun invoiceDetail(id: Long) = "invoice/$id"
 }
@@ -71,11 +73,15 @@ fun NotaApp() {
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPlnCustomers = { navController.navigate(Routes.PLN_CUSTOMERS) }
+                    onOpenPlnCustomers = { navController.navigate(Routes.PLN_CUSTOMERS) },
+                    onOpenPlnProducts = { navController.navigate(Routes.PLN_PRODUCTS) }
                 )
             }
             composable(Routes.PLN_CUSTOMERS) {
                 PlnCustomersScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.PLN_PRODUCTS) {
+                PlnProductsScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.PRINTER) {
                 PrinterScreen(onBack = { navController.popBackStack() })
