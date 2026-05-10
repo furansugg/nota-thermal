@@ -23,12 +23,16 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -55,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.ui.common.appViewModel
+import com.notathermal.app.ui.components.SectionHeader as SharedSectionHeader
 import com.notathermal.app.util.Format
 import kotlinx.coroutines.launch
 
@@ -117,7 +122,7 @@ fun InvoiceFormScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { SectionHeader("Daftar Item") }
+            item { SharedSectionHeader("Daftar Item", icon = Icons.Default.Inventory2) }
             items(holder.items, key = { it.id }) { itemHolder ->
                 ItemCard(
                     itemHolder = itemHolder,
@@ -136,7 +141,7 @@ fun InvoiceFormScreen(
                     Text("Tambah Item")
                 }
             }
-            item { SectionHeader("Pelanggan & Catatan") }
+            item { SharedSectionHeader("Pelanggan & Catatan", icon = Icons.Default.Person) }
             item {
                 OutlinedTextField(
                     value = holder.customerName,
@@ -164,7 +169,7 @@ fun InvoiceFormScreen(
                     minLines = 2
                 )
             }
-            item { SectionHeader("Diskon, Pajak, Pembayaran") }
+            item { SharedSectionHeader("Diskon, Pajak, Pembayaran", icon = Icons.Default.Payments) }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -214,9 +219,19 @@ fun InvoiceFormScreen(
                 Button(
                     onClick = onSave,
                     enabled = holder.canSave,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Text(if (holder.saving) "Menyimpan…" else "Simpan & Lihat")
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (holder.saving) "Menyimpan…" else "Simpan & Lihat",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -235,18 +250,19 @@ private fun sanitizeNumber(v: String): String {
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-}
-
-@Composable
 private fun ItemCard(
     itemHolder: ItemDraftHolder,
     currency: String,
     canRemove: Boolean,
     onRemove: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -320,7 +336,14 @@ private fun PaymentMethodPicker(selected: String, onSelect: (String) -> Unit) {
 
 @Composable
 private fun TotalsCard(holder: InvoiceFormStateHolder, currency: String) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)

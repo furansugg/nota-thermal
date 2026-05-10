@@ -20,8 +20,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -136,23 +139,33 @@ fun InvoiceDetailScreen(
         ) {
             if (isHutang) {
                 item {
-                    Button(
+                    FilledTonalButton(
                         onClick = { showMarkPaidDialog = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null)
-                        Spacer(Modifier.height(0.dp))
-                        Text("  Tandai Sudah Lunas")
+                        Spacer(Modifier.padding(start = 8.dp))
+                        Text(
+                            " Tandai Sudah Lunas",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
             }
             item {
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceContainerLowest, RoundedCornerShape(12.dp))
-                            .padding(14.dp)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest, RoundedCornerShape(20.dp))
+                            .padding(18.dp)
                     ) {
                         Text(
                             text = viewModel.previewText(),
@@ -166,13 +179,19 @@ fun InvoiceDetailScreen(
                 Button(
                     onClick = { viewModel.print() },
                     enabled = !state.printing,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(Icons.Default.Print, contentDescription = null)
-                    Spacer(Modifier.height(0.dp))
+                    Spacer(Modifier.padding(start = 8.dp))
                     Text(
-                        text = if (state.printing) "  Mencetak…"
-                        else "  Cetak ke printer (${settings.paperWidth.mm.toInt()}mm)"
+                        text = if (state.printing) " Mencetak…"
+                        else " Cetak ke printer (${settings.paperWidth.mm.toInt()}mm)",
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
             }
@@ -180,7 +199,8 @@ fun InvoiceDetailScreen(
                 item {
                     OutlinedButton(
                         onClick = onOpenPrinter,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Text("Pilih printer Bluetooth")
                     }

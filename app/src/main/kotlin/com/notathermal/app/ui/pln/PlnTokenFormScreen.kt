@@ -21,10 +21,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PersonSearch
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +59,7 @@ import com.notathermal.app.data.db.PaymentMethod
 import com.notathermal.app.data.db.PlnCustomerEntity
 import com.notathermal.app.data.db.PlnProductEntity
 import com.notathermal.app.ui.common.appViewModel
+import com.notathermal.app.ui.components.SectionHeader
 import com.notathermal.app.util.Format
 
 private val PLN_PAYMENT_METHODS = listOf(PaymentMethod.TUNAI, PaymentMethod.HUTANG)
@@ -122,15 +130,16 @@ fun PlnTokenFormScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { Header("Produk") }
+            item { SectionHeader("Produk", icon = Icons.Default.Inventory2) }
             if (products.isNotEmpty()) {
                 item {
-                    androidx.compose.material3.OutlinedButton(
+                    FilledTonalButton(
                         onClick = { showProductPicker = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Icon(Icons.Default.Inventory2, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Pilih produk PLN (${products.size})")
                     }
                 }
@@ -145,15 +154,16 @@ fun PlnTokenFormScreen(
                     singleLine = true
                 )
             }
-            item { Header("Data Pelanggan & Meter") }
+            item { SectionHeader("Data Pelanggan & Meter", icon = Icons.Default.Person) }
             if (savedCustomers.isNotEmpty()) {
                 item {
-                    androidx.compose.material3.OutlinedButton(
+                    FilledTonalButton(
                         onClick = { showCustomerPicker = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Icon(Icons.Default.PersonSearch, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Pilih dari pelanggan tersimpan (${savedCustomers.size})")
                     }
                 }
@@ -188,7 +198,7 @@ fun PlnTokenFormScreen(
                 )
             }
 
-            item { Header("Nomor Token / Stroom") }
+            item { SectionHeader("Nomor Token / Stroom", icon = Icons.Default.Tag) }
             item {
                 OutlinedTextField(
                     value = holder.tokenNumber,
@@ -201,7 +211,7 @@ fun PlnTokenFormScreen(
                 )
             }
 
-            item { Header("Pembayaran") }
+            item { SectionHeader("Pembayaran", icon = Icons.Default.Payments) }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -268,9 +278,19 @@ fun PlnTokenFormScreen(
                 Button(
                     onClick = onSave,
                     enabled = holder.canSave,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Text(if (holder.saving) "Menyimpan…" else "Simpan & Lihat")
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (holder.saving) "Menyimpan…" else "Simpan & Lihat",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -293,10 +313,7 @@ private fun sanitizeNumber(v: String): String {
     }
 }
 
-@Composable
-private fun Header(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -434,7 +451,14 @@ private fun PlnCustomerPickerSheet(
 
 @Composable
 private fun TotalsCard(holder: PlnFormStateHolder, currency: String) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)

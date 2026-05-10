@@ -17,13 +17,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -39,6 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.notathermal.app.data.db.PlnProductEntity
 import com.notathermal.app.data.prefs.AppSettings
@@ -84,49 +91,64 @@ fun PlnProductsScreen(onBack: () -> Unit) {
             ExtendedFloatingActionButton(
                 onClick = { showAdd = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Tambah Produk") }
+                text = { Text("Tambah Produk", fontWeight = FontWeight.SemiBold) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                expanded = true,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp
+                )
             )
         }
     ) { padding ->
         if (products.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Belum ada produk PLN", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Tambahkan produk (mis. Token Listrik 50k) untuk mempercepat pembuatan invoice.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            EmptyPlnProducts(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(products, key = { it.id }) { product ->
-                    ListItem(
-                        headlineContent = { Text(product.name) },
-                        supportingContent = { Text("$currency ${Format.number(product.nominal)}") },
-                        trailingContent = {
-                            androidx.compose.foundation.layout.Row {
-                                IconButton(onClick = { editing = product }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Ubah")
-                                }
-                                IconButton(onClick = { pendingDelete = product }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Hapus")
-                                }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            com.notathermal.app.ui.components.LeadingBadge(
+                                icon = Icons.Default.Inventory2,
+                                container = MaterialTheme.colorScheme.primaryContainer,
+                                content = MaterialTheme.colorScheme.onPrimaryContainer,
+                                sizeDp = 40
+                            )
+                            Spacer(Modifier.size(12.dp))
+                            Column(modifier = Modifier.fillMaxWidth().padding(end = 8.dp).weight(1f)) {
+                                Text(
+                                    product.name,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    "$currency ${Format.number(product.nominal)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    HorizontalDivider()
+                            IconButton(onClick = { editing = product }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Ubah")
+                            }
+                            IconButton(onClick = { pendingDelete = product }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Hapus")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -225,6 +247,42 @@ private fun ProductEditorDialog(
             TextButton(onClick = onDismiss) { Text("Batal") }
         }
     )
+}
+
+@Composable
+private fun EmptyPlnProducts(modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier.padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(112.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Inventory2,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(Modifier.size(8.dp))
+            Text(
+                "Belum ada produk PLN",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                "Tambahkan produk (mis. Token Listrik 50k) untuk mempercepat pembuatan invoice.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
 }
 
 private fun formatNominalForEdit(value: Double): String =
